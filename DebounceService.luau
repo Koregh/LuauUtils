@@ -1,3 +1,34 @@
+--[[ How to use
+
+    -- Check if an action can be performed with a 2-second cooldown
+    local canPerform = DebounceService.canDo("Shoot", 2.0) --> boolean
+
+    -- Execute with callbacks (fires 'onExecute' if ready, 'onBlocked' if on cooldown)
+    DebounceService.canDo("Ability_Q", 5.0, 
+        function() 
+            print("Ability fired!") 
+        end,
+        function(timeLeft) 
+            print("Please wait: " .. string.format("%.1f", timeLeft) .. "s") 
+        end
+    )
+
+    -- Query state
+    DebounceService.isBlocked("Shoot")    --> boolean (true if currently on cooldown)
+    DebounceService.getTimeLeft("Shoot")  --> number (seconds remaining, e.g., 1.45)
+    
+    -- Query progress (useful for UI Progress Bars)
+    -- Returns 1.0 (just started) decaying down to 0.0 (ready to use)
+    DebounceService.getAlpha("Shoot")     --> number (0 to 1)
+
+    -- Reset cooldowns
+    DebounceService.reset("Shoot")        --> Resets a specific action
+    DebounceService.reset()               --> Global reset (clears all cooldowns)
+
+    -- Manual cache cleanup (automatically runs every 60s during canDo calls)
+    DebounceService.flush()
+]]
+
 type CacheEntry = {
 	expires: number,   -- os.clock() no momento de expiração
 	duration: number,  -- duração total do cooldown
