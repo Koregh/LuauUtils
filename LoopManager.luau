@@ -1,3 +1,16 @@
+--[[ How to use
+
+LoopManager.start("UpdateUI", function(dt)
+    print("Test")
+end, {
+    mode = "render",      -- Usa RenderStepped (apenas Client)
+    delay = 0.5,          -- Roda apenas a cada meio segundo
+    maxErrors = 3,        -- Se der erro 3 vezes, o loop se mata sozinho
+    onError = function(id, err) 
+        warn(`O loop {id} quebrou com o erro: {err}`)
+    end
+}) ]]
+
 local RunService = game:GetService("RunService")
 
 export type LoopMode = "render" | "heart" | "step"
