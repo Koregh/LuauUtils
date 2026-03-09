@@ -99,7 +99,7 @@ function LoopManager.start(id: string, fn: (dt: number) -> (), opts: LoopOptions
 
 		if not ok then
 			entry.errorCount += 1
-			local msg = `[LoopManager '{id}'] erro #{entry.errorCount}: {err}`
+			local msg = `[LoopManager '{id}'] error #{entry.errorCount}: {err}`
 
 			if options.onError then
 				options.onError(id, err)
@@ -109,7 +109,7 @@ function LoopManager.start(id: string, fn: (dt: number) -> (), opts: LoopOptions
 
 		-- Auto-kill reaches limit of consecutive errors
 			if options.maxErrors and entry.errorCount >= options.maxErrors then
-				warn(`[LoopManager '{id}'] desativado após {entry.errorCount} erros.`)
+			warn(`[LoopManager '{id}'] disabled after {entry.errorCount} errors.`)
 				LoopManager.stop(id)
 			end
 		end
