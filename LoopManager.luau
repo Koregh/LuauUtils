@@ -3,11 +3,11 @@
 LoopManager.start("UpdateUI", function(dt)
     print("Test")
 end, {
-    mode = "render",      -- Usa RenderStepped (apenas Client)
-    delay = 0.5,          -- Roda apenas a cada meio segundo
-    maxErrors = 3,        -- Se der erro 3 vezes, o loop se mata sozinho
+    mode = "render",      -- Uses RenderStepped (Client only)
+    delay = 0.5,         -- Runs only every half second
+    maxErrors = 3,        -- If there is an error 3 times, the loop kills itself
     onError = function(id, err) 
-        warn(`O loop {id} quebrou com o erro: {err}`)
+        warn(`Loop {id} broke with error: {err}`)
     end
 }) ]]
 
