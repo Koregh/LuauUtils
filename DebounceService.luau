@@ -37,6 +37,8 @@ type CacheEntry = {
 type ExecuteCallback = () -> ()
 type BlockedCallback = (timeLeft: number) -> ()
 
+local RunService = game:GetService("RunService")
+local IS_SERVER = RunService:IsServer()
 
 local DebounceService = {}
 DebounceService.__index = DebounceService
@@ -85,6 +87,20 @@ function DebounceService.canDo(
 ): boolean
 	_validateArgs(id, duration)
 	_autoCleanup()
+
+if IS_SERVER then
+	local MAX_CACHE_SIZE = 5000
+	
+	local count = 0
+	for _ in pairs(_cache) do
+		count += 1
+	end
+	
+	if count > MAX_CACHE_SIZE then
+		warn("[DebounceService] Cache cheio, limpando...")
+		DebounceService.flush()
+	end
+end
 
 	local now = os.clock()
 	local entry = _cache[id]
