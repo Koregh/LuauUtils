@@ -3,7 +3,7 @@ local RunService = game:GetService("RunService")
 local IS_SERVER = RunService:IsServer()
 
 export type ValidationResult<T> = { success: true, value: T } | { success: false, error: string }
-export type Validator<T> = (value: any) -> (boolean, any) -- Retorna (sucesso, valor_ou_erro)
+export type Validator<T> = (value: any) -> (boolean, any) 
 
 local Config = {
 	MaxDepth = 5,
