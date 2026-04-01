@@ -27,7 +27,7 @@ local Config = {
 local GlobalMetrics = {
 	totalValidations = 0,
 	totalErrors = 0,
-	perSchema = {}, -- nome da schema -> { validations, errors }
+	perSchema = {}, 
 }
 
 local compiledSchemas = setmetatable({}, { __mode = "k" })
