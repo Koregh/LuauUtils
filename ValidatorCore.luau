@@ -1,22 +1,4 @@
 --!strict
---[[
-	ValidatorCore v2.0
-	Sistema de validação de schemas com suporte a campos obrigatórios/opcionais,
-	tipos variados, métricas detalhadas e proteção contra abusos (recursão, tamanho).
-
-	Uso:
-		local Validator = require(...)
-		local schema = Validator.schema({
-			name = Validator.string(50),          -- string com máximo 50 caracteres
-			age  = Validator.number(0, 120),       -- número entre 0 e 120
-			email = Validator.optional(Validator.string()), -- opcional
-		})
-		local ok, data = schema({ name = "João", age = 30 })
-		assert(ok, data) -- data contém os valores validados
-
-		-- Métricas
-		print(Validator.Metrics.get()) -- { totalValidations, totalErrors, ... }
-]]
 
 local RunService = game:GetService("RunService")
 local IS_SERVER = RunService:IsServer()
@@ -24,8 +6,8 @@ local IS_SERVER = RunService:IsServer()
 export type Validator<T> = (value: any, context?: ValidationContext) -> (boolean, T | string)
 
 export type ValidationContext = {
-	path: string,               -- caminho atual no schema (ex: "user.address.city")
-	metrics: MetricsCollector,  -- coletor de métricas para esta validação
+	path: string,              
+	metrics: MetricsCollector,  
 }
 
 type MetricsCollector = {
@@ -36,24 +18,20 @@ type MetricsCollector = {
 type SchemaConfig = { [string]: Validator<any> }
 type CompiledSchema = { validator: Validator<any>, requiredKeys: { [string]: boolean } }
 
--- Configurações globais (podem ser alteradas)
 local Config = {
-	MaxDepth = 5,           -- profundidade máxima de aninhamento de tabelas
-	MaxKeys = 100,          -- número máximo de chaves por tabela
-	MaxStringLength = 100,  -- tamanho máximo para strings (aplicado em todos os ambientes)
+	MaxDepth = 5,           
+	MaxKeys = 100,          
+	MaxStringLength = 100,  
 }
 
--- Métricas globais (todas as validações)
 local GlobalMetrics = {
 	totalValidations = 0,
 	totalErrors = 0,
 	perSchema = {}, -- nome da schema -> { validations, errors }
 }
 
--- Cache de schemas compilados (fraco para permitir coleta)
 local compiledSchemas = setmetatable({}, { __mode = "k" })
 
--- Função auxiliar para criar um coletor de métricas para uma validação específica
 local function createMetricsCollector(schemaName: string?): MetricsCollector
 	local collector = {
 		validations = 0,
@@ -68,7 +46,6 @@ local function createMetricsCollector(schemaName: string?): MetricsCollector
 	return collector
 end
 
--- Atualiza as métricas globais e por schema ao final da validação
 local function finalizeMetrics(collector: MetricsCollector, schemaName: string?)
 	GlobalMetrics.totalValidations += collector.validations
 	GlobalMetrics.totalErrors += collector.errors
@@ -81,7 +58,6 @@ local function finalizeMetrics(collector: MetricsCollector, schemaName: string?)
 	end
 end
 
--- Validação de número com conversão segura
 local function validateNumber(v: any, min: number?, max: number?): (boolean, number | string)
 	if type(v) ~= "number" then
 		return false, "expected number, got " .. type(v)
@@ -101,7 +77,6 @@ local function validateNumber(v: any, min: number?, max: number?): (boolean, num
 	return true, v
 end
 
--- Validação de string com comprimento máximo (aplicado em todos os ambientes)
 local function validateString(v: any, maxLen: number?): (boolean, string | string)
 	if type(v) ~= "string" then
 		return false, "expected string, got " .. type(v)
@@ -113,13 +88,11 @@ local function validateString(v: any, maxLen: number?): (boolean, string | strin
 	return true, v
 end
 
--- Validação de tabela com recursão
 local function validateTable(v: any, schema: CompiledSchema, depth: number, seen: { [any]: boolean }, context: ValidationContext): (boolean, any)
 	if type(v) ~= "table" then
 		return false, "expected table, got " .. type(v)
 	end
 
-	-- Prevenção de recursão cíclica
 	if seen[v] then
 		return false, "circular reference detected"
 	end
@@ -131,14 +104,12 @@ local function validateTable(v: any, schema: CompiledSchema, depth: number, seen
 	local count = 0
 	local result = {}
 
-	-- Verificar chaves obrigatórias
 	for key, required in pairs(schema.requiredKeys) do
 		if v[key] == nil then
 			return false, string.format("missing required key '%s'", key)
 		end
 	end
 
-	-- Validar todas as chaves presentes
 	for key, value in pairs(v) do
 		count += 1
 		if count > Config.MaxKeys then
@@ -164,13 +135,9 @@ local function validateTable(v: any, schema: CompiledSchema, depth: number, seen
 	return true, result
 end
 
--- ==============================
--- Tipos públicos
--- ==============================
 
 local Types = {}
 
--- Validação de string
 function Types.string(maxLen: number?): Validator<string>
 	return function(v: any, ctx: ValidationContext?): (boolean, string | string)
 		local ok, res = validateString(v, maxLen)
@@ -184,7 +151,6 @@ function Types.string(maxLen: number?): Validator<string>
 	end
 end
 
--- Validação de número
 function Types.number(min: number?, max: number?): Validator<number>
 	return function(v: any, ctx: ValidationContext?): (boolean, number | string)
 		local ok, res = validateNumber(v, min, max)
@@ -198,7 +164,6 @@ function Types.number(min: number?, max: number?): Validator<number>
 	end
 end
 
--- Validação de booleano
 function Types.boolean(): Validator<boolean>
 	return function(v: any, ctx: ValidationContext?): (boolean, boolean | string)
 		if type(v) ~= "boolean" then
@@ -210,7 +175,6 @@ function Types.boolean(): Validator<boolean>
 	end
 end
 
--- Validação de literal (valor exato)
 function Types.literal(value: any): Validator<any>
 	return function(v: any, ctx: ValidationContext?): (boolean, any | string)
 		if v == value then
@@ -222,14 +186,12 @@ function Types.literal(value: any): Validator<any>
 	end
 end
 
--- Validação de array (lista) com validador para elementos
 function Types.array(elementValidator: Validator<any>): Validator<any>
 	return function(v: any, ctx: ValidationContext?): (boolean, any | string)
 		if type(v) ~= "table" then
 			if ctx then ctx.metrics:recordError("expected array (table)") end
 			return false, "expected array"
 		end
-		-- Verificar se é um array (índices inteiros consecutivos começando em 1)
 		local maxIdx = 0
 		for k in pairs(v) do
 			if type(k) ~= "number" or k < 1 or math.floor(k) ~= k then
@@ -238,7 +200,6 @@ function Types.array(elementValidator: Validator<any>): Validator<any>
 			end
 			if k > maxIdx then maxIdx = k end
 		end
-		-- Verificar se há gaps
 		for i = 1, maxIdx do
 			if v[i] == nil then
 				if ctx then ctx.metrics:recordError("array has missing index") end
@@ -263,7 +224,6 @@ function Types.array(elementValidator: Validator<any>): Validator<any>
 	end
 end
 
--- Validação de tabela genérica (qualquer tabela)
 function Types.table(): Validator<any>
 	return function(v: any, ctx: ValidationContext?): (boolean, any | string)
 		if type(v) ~= "table" then
@@ -275,7 +235,6 @@ function Types.table(): Validator<any>
 	end
 end
 
--- Validação de qualquer valor (sem restrição)
 function Types.any(): Validator<any>
 	return function(v: any, ctx: ValidationContext?): (boolean, any | string)
 		if ctx then ctx.metrics:recordSuccess() end
@@ -283,7 +242,6 @@ function Types.any(): Validator<any>
 	end
 end
 
--- Validação de nil (útil em unions)
 function Types.nil(): Validator<nil>
 	return function(v: any, ctx: ValidationContext?): (boolean, nil | string)
 		if v == nil then
@@ -295,7 +253,6 @@ function Types.nil(): Validator<nil>
 	end
 end
 
--- Campo opcional: se não presente, ignora; se presente, valida com o validador fornecido
 function Types.optional(validator: Validator<any>): Validator<any>
 	return function(v: any, ctx: ValidationContext?): (boolean, any | string)
 		if v == nil then
@@ -306,7 +263,6 @@ function Types.optional(validator: Validator<any>): Validator<any>
 	end
 end
 
--- União de tipos: aceita qualquer um dos validadores passados
 function Types.oneOf(...: Validator<any>): Validator<any>
 	local validators = { ... }
 	return function(v: any, ctx: ValidationContext?): (boolean, any | string)
@@ -324,28 +280,16 @@ function Types.oneOf(...: Validator<any>): Validator<any>
 	end
 end
 
--- Schema principal
 function Types.schema(schemaConfig: SchemaConfig): Validator<any>
 	-- Verificar se já está compilado
 	if compiledSchemas[schemaConfig] then
 		return compiledSchemas[schemaConfig].validator
 	end
 
-	-- Compilar: separar campos obrigatórios (todos que não são optional)
 	local requiredKeys = {}
 	local validatorMap = {}
 	for key, validator in pairs(schemaConfig) do
 		validatorMap[key] = validator
-		-- Determinar se é obrigatório: se não é um optional, ou se o optional está explicitamente marcado?
-		-- O campo é obrigatório a menos que o validador seja explicitamente Types.optional.
-		-- Mas não podemos detectar isso facilmente porque optional é uma closure.
-		-- Vamos marcar como obrigatório se não for um optional (teremos que inspecionar a função? complicado).
-		-- Em vez disso, exigimos que o usuário use Types.optional quando desejar opcional.
-		-- A validação de campos obrigatórios será feita verificando se o validador rejeita nil.
-		-- Se o validador aceitar nil (como optional), então não é obrigatório.
-		-- Para simplificar, vamos deixar a verificação de obrigatoriedade para o validador.
-		-- Quando o campo está ausente, chamamos o validador com nil e se ele falhar, reportamos.
-		-- Então não precisamos de um campo requiredKeys explícito.
 	end
 
 	local compiled = {
@@ -353,14 +297,13 @@ function Types.schema(schemaConfig: SchemaConfig): Validator<any>
 		requiredKeys = requiredKeys, -- não usado agora
 	}
 
-	-- Criar o validador final
+	
 	local function schemaValidator(data: any, ctx: ValidationContext?): (boolean, any | string)
 		if type(data) ~= "table" then
 			if ctx then ctx.metrics:recordError("expected table") end
 			return false, "expected table"
 		end
 
-		-- Criar contexto se não fornecido
 		local localCtx = ctx or {
 			path = "",
 			metrics = createMetricsCollector(),
@@ -368,7 +311,6 @@ function Types.schema(schemaConfig: SchemaConfig): Validator<any>
 		local seen = {}
 		local ok, result = validateTable(data, compiled, 1, seen, localCtx)
 		if ok then
-			-- Sucesso: atualizar métricas
 			if ctx then
 				ctx.metrics:recordSuccess()
 			else
@@ -377,7 +319,6 @@ function Types.schema(schemaConfig: SchemaConfig): Validator<any>
 			end
 			return true, result
 		else
-			-- Falha: atualizar métricas
 			if ctx then
 				ctx.metrics:recordError(result)
 			else
@@ -388,14 +329,9 @@ function Types.schema(schemaConfig: SchemaConfig): Validator<any>
 		end
 	end
 
-	-- Cache
 	compiledSchemas[schemaConfig] = { validator = schemaValidator, requiredKeys = requiredKeys }
 	return schemaValidator
 end
-
--- ==============================
--- Métricas e utilitários
--- ==============================
 
 local Metrics = {}
 
@@ -413,14 +349,12 @@ function Metrics.reset()
 	GlobalMetrics.perSchema = {}
 end
 
--- Permite modificar configurações globais (use com cuidado)
 function Metrics.setConfig(newConfig: { MaxDepth?: number, MaxKeys?: number, MaxStringLength?: number })
 	if newConfig.MaxDepth then Config.MaxDepth = newConfig.MaxDepth end
 	if newConfig.MaxKeys then Config.MaxKeys = newConfig.MaxKeys end
 	if newConfig.MaxStringLength then Config.MaxStringLength = newConfig.MaxStringLength end
 end
 
--- Exporta a API
 local ValidatorCore = {
 	Types = Types,
 	Metrics = Metrics,
