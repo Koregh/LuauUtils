@@ -66,6 +66,15 @@ local function _validateArgs(id: string, duration: number): ()
 
 	assert(type(duration) == "number" and duration > 0,
 		("[DebounceService] 'duration' deve ser um número positivo. Recebido: %s"):format(tostring(duration)))
+
+	assert(id:match("^[%w_:%-]+$"),
+		"[DebounceService] 'id' contém caracteres inválidos.")
+
+	assert(type(duration) == "number" and duration > 0,
+		("[DebounceService] 'duration' deve ser um número positivo. Recebido: %s"):format(tostring(duration)))
+
+	assert(duration <= MAX_DURATION,
+		("[DebounceService] 'duration' muito alto (%s)"):format(tostring(duration)))
 end
 
 function DebounceService.canDo(
