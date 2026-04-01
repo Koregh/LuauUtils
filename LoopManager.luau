@@ -156,10 +156,17 @@ end
 
 
 function LoopManager.start(id: string, fn: (dt: number) -> (), opts: LoopOptions?)
+	local MAX_ID_LENGTH = 50
 	assert(type(id) == "string" and #id > 0, "[LoopManager] id must be a non-empty string")
 	assert(type(fn) == "function",           "[LoopManager] fn must be a function")
+	assert(#id <= MAX_ID_LENGTH, "[LoopManager] id muito grande")
+	assert(id:match("^[%w_:%-]+$"),
+	"[LoopManager] id inválido")
 
 	local options = mergeOptions(opts)
+
+	assert(type(options.delay) == "number" and options.delay >= 0,
+	"[LoopManager] delay inválido")
 
 	if IS_SERVER and options.mode == "render" then
 		warn(`[LoopManager] '{id}': RenderStepped is client-only. Using Heartbeat.`)
